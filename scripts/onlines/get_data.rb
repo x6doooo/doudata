@@ -6,6 +6,8 @@ require 'json'
 
 #获取豆瓣线上活动数据
 
+$has_it = []
+
 #循环控制
 class Looper
   attr_accessor :total, :start, :count, :sleep
@@ -46,9 +48,13 @@ class Worker
   #将数据插入数据库
   def insert_to_db
     @json["onlines"].each do |line|
+      $has_it.push(line["id"])
       keys = []
       values = []
       line.each do |key, value|
+        if key == 'tags'
+          value = value.join('|')
+        end
         keys.push('`' + key.to_s + '`')
         values.push("'" + value.to_s.gsub(/\'/, '') + "'")
       end
@@ -56,12 +62,14 @@ class Worker
       values = values.join(',')
       odr = "INSERT into actives_data (#{keys}) VALUES (#{values})"
       puts odr
+      puts "log: #{line["id"]} done."
       @sql.query(odr)
     end
+    puts "log: #{$has_it.length} actives done."
   end
 end
 
-looper = Looper.new(30000, 20000, 100, 4)
+looper = Looper.new(10, 0, 10, 4)
 worker = Worker.new('https://api.douban.com/v2/onlines')
 looper.loop_get do |start, count, sleeptime|
   worker.get_active_info(start, count)

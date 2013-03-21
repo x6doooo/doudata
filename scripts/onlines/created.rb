@@ -19,9 +19,9 @@ class Created_getter
   def format_date_and_time
     @data.each do |v|
       v = v[0]
-      @date_src.push(v[0..9])
+      @date_src.push(v[0..6])
       @day_src.push(v[5..9])
-      @time_src.push(v[11..15])
+      @time_src.push(v[11..12])
     end
   end
 end
