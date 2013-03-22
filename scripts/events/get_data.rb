@@ -23,15 +23,16 @@ class Worker < API_getter
   end
   #将数据插入数据库
   def insert_to_db
-    fields = ["participant_count", "image", "begin_time", "geo", "title", "wisher_count", "address"]
+    fields = ["participant_count", "image", "begin_time", "end_time", "geo", "title", "wisher_count", "address"]
     @json["events"].each do |line|
       $has_it.push line["id"]
       values = []
       fields.each do |f|
-        values.push "'#{line[f]}'"
+        values.push "'#{line[f].to_s.gsub(/\'/, '')}'"
       end
       odr = "INSERT into events_bj (#{fields.join(',')}) VALUES (#{values.join(',')})"
-      @sql odr
+      puts odr
+      @sql.query(odr)
     end
     puts "log: #{$has_it.length} actives done."
   end
