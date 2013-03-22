@@ -61,7 +61,6 @@ class Worker
       keys = keys.join(',')
       values = values.join(',')
       odr = "INSERT into actives_data (#{keys}) VALUES (#{values})"
-      puts odr
       puts "log: #{line["id"]} done."
       @sql.query(odr)
     end
@@ -69,7 +68,7 @@ class Worker
   end
 end
 
-looper = Looper.new(10, 0, 10, 4)
+looper = Looper.new(82800, 0, 100, 4)
 worker = Worker.new('https://api.douban.com/v2/onlines')
 looper.loop_get do |start, count, sleeptime|
   worker.get_active_info(start, count)

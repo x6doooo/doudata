@@ -3,32 +3,59 @@ require 'RubyGems'
 require 'mysql'
 require 'json'
 
-sql = Mysql.new('localhost', 'root', '', 'test')
-data = sql.query('SELECT tags,participant_count,photo_count,liked_count,recs_count FROM actives_data').to_a
-
-tags = []
-length = 0;
-data.each do |val|
-  #需要删除中文标点符号并将这些符号都替换成|线
-  val[0] = val[0].gsub(/[\s,.!@#$\%^&]/,'').split('|')
-  val[0].each do |v|
-    tem = []
-    if tags.include?(v)
-      record = sql.query("SELECT tag,participant_count,photo_count,liked_count,recs_count FROM actives_tags WHERE tag = '#{v}'").to_a[0]
-      4.times do |i|
-        tem[i+1] = record[i+1].to_i + val[i+1].to_i
-      end
-      odr = "UPDATE actives_tags SET participant_count=#{tem[1]},photo_count=#{tem[2]},liked_count=#{tem[3]},recs_count=#{tem[4]} WHERE tag = '#{v}'"
-      puts odr
-      sql.query(odr)
-    else
-      tags.push(v)
-      odr = "INSERT into actives_tags (tag,participant_count,photo_count,liked_count,recs_count) VALUES ('#{v}','#{val[1]}','#{val[2]}','#{val[3]}','#{val[4]}')"
-      puts odr
-      sql.query(odr)
+class Tag_counter
+  attr_accessor :sql, :tags, :length, :target_number, :records
+  def initialize(num)
+    @sql = Mysql.new('localhost', 'root', '', 'test')
+    @tags = []
+    @length = 0
+    @target_number = num
+  end
+  def go
+    @records = get_records
+    loop_check
+    into_db
+  end
+  def get_records
+    @sql.query("SELECT tags,participant_count,photo_count,liked_count,recs_count FROM actives_data LIMIT #{@target_number}").to_a
+  end
+  def loop_check
+    while !records.empty?
+      rd = records.pop
+      check_it(rd)
+      printf "\r count: %.2f %%  tags_count: #{tags.length}  pass: #{@target_number-records.length}  less: #{records.length}" , (@target_number - records.length).to_f/@target_number.to_f * 100
+      $stdout.flush
     end
   end
-  puts length
-  length += 1
+  def check_it(val)
+    val[0] = val[0].gsub(/[\s,.!@\#$\%^&。，；：#！？——=\+\^‘’“”{}！￥~、]/u,'|').downcase.split('|')
+    val[0].each do |v|
+      pos = @tags.index{ |rd| rd[0] == v }
+      if pos
+        update_it(v, val, pos)
+      else
+        insert_it(v, val)
+      end
+    end
+  end
+  def update_it(v, val, pos)
+    (1..4).each do |i|
+      @tags[pos][i] = @tags[pos][i].to_i + val[i].to_i
+    end
+  end
+  def insert_it(v, val)
+    @tags.push([v, val[1], val[2], val[3], val[4]])
+  end
+  def into_db
+    idx = 0
+    puts "\n tags_count = #{@tags.length}"
+    @tags.each do |rd|
+      @sql.query("INSERT into actives_tags (tag,participant_count,photo_count,liked_count,recs_count) VALUES ('#{rd[0]}', #{rd[1]}, #{rd[2]}, #{rd[3]}, #{rd[4]})")
+      idx += 1
+      printf "\r insert : %.2f %% ", idx/@tags.length.to_f * 100
+    end
+  end
 end
 
+counter = Tag_counter.new(82800)
+counter.go
